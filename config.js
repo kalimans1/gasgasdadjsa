@@ -1,18 +1,19 @@
 module.exports = {
-	guildId: '', // Sunucu ID buraya yazılıcak.
-    clientSecret: process.env.clientsecret, // Developer portal > botunu seç > OAuth2 sekmesindeki "CLIENT SECRET" buraya yazılıcak.
-    clientID: "1255943052963614820", // Developer portal > botunu seç > OAuth2 sekmesindeki "CLIENT ID" buraya yazılıcak.
-    roleId: '', // Üye yetkilendirme yaptıktan sonra vericeği rol.(Birden fazla rol atanmaz!)
-    token: process.env.token, // Developer portal > botunu seç > Bot sekmesindeki "TOKEN" buraya yazılıcak.
-    mongo: process.env.mongo, // https://www.mongodb.com/ sitesindeki bağlantı linki buraya yazılıcak.(Veriler burada depolanıcak!)
-    prefix: ".", // Bot prefixi buraya yazılıcak.
-    redirectURI: process.env.redirect:4848, // Developer portal > botunu seç > OAuth2 sekmesindeki "Redirects" buraya yazılıcak. Vds kullanıyorsanız ip adresini yazıp yanına port yazıp ardından kaydedin. (Örnek: http://55.224.167.186:4848)
-    port: 4848, // Buraya port yazılıcak. Yukarıyla aynı olmak zorundadır. (Örnek portlar; 80 , 4848)
-    owners: ["1214250364597960775" , "846255119044706334", ""], // Bot sahipleri buraya yazılıcak.(Birden fazla yazılabilir ve sadece buradaki kişiler botu kullanabilir!)
-    redirectionIP: [process.env.redirect:4848], // Yukarıdaki ip buraya yazılıcak. (Örnek: http://55.224.167.186:4848)
-    botlink: ["https://discord.com/oauth2/authorize?client_id=1255943052963614820&permissions=8&integration_type=0&scope=bot"], // Developer portal > botunu seç > OAuth2 sekmesindeki "OAuth2 URL Generator" buraya yazılıcak.
-    redirectionBot: [process.env.redirect:4849],
-    redirectport: 4849, // Yetkilendirme yapıldıktan sonra yönlendiriceği link. (Buraya ip adresi yazılıcak.) (Örnek: http://55.224.167.186)
-    authlink: "https://discord.com/oauth2/authorize?client_id=1255943052963614820&response_type=code&redirect_uri=http%3A%2F%2F185.148.242.5%3A4848&scope=identify+guilds.join", // Developer portal > botunu seç > OAuth2 sekmesindeki "OAuth2 URL Generator" girdikten sonra "SCOPES" bölümünden [identify ve guilds.join] seçiyoruz ardından aşağıya geliyoruz ve "SELECT REDIRECT URL" kısmından girdiğimiz ip adresini seçiyoruz ve linki kopyalayıp buraya yapıştırıyoruz.
-    webhookURL: process.env.webhook, // Üyeler yetkilendirme yaptığında log gönderileceği kanal webhooku buraya yazılıcak.
-    webhookURL2: "https://discord.com/api/webhooks/1254814784574980127/L0giXKQO" // Üyeler yetkilendirme yaptığında log gönderileceği kanal webhooku buraya yazılıcak.
+    guildId: '1394864596627755038', // Senin verdiğin Sunucu ID
+    clientSecret: process.env.CLIENT_SECRET, // Developer portal > OAuth2 > CLIENT SECRET
+    clientID: "1216103189116616834", // Senin verdiğin Client ID
+    roleId: '', // Üye yetkilendirme yaptıktan sonra verilecek rol
+    token: process.env.TOKEN, // Bot Token
+    mongo: process.env.MONGO, // MongoDB bağlantı URL
+    prefix: ".", // Bot prefixi
+    redirectURI: process.env.REDIRECT_URI || "https://baytonoauths.onrender.com:4848", // OAuth2 Redirect URI
+    port: process.env.PORT || 4848, // Render otomatik portu kullan veya 4848
+    owners: ["1214250364597960775", "846255119044706334", ""], // Bot sahipleri (eski hali)
+    redirectionIP: [process.env.REDIRECTION_IP || "https://baytonoauths.onrender.com:4848"], // Yetkilendirme sonrası yönlendirme
+    botlink: ["https://discord.com/oauth2/authorize?client_id=1216103189116616834&permissions=8&integration_type=0&scope=bot"], // Bot linki
+    redirectionBot: [process.env.REDIRECTION_BOT || "https://baytonoauths.onrender.com:4849"], // Yetkilendirme sonrası bot yönlendirme
+    redirectport: 4849, // Yetkilendirme sonrası HTML server portu
+    authlink: "https://discord.com/oauth2/authorize?client_id=1216103189116616834&response_type=code&redirect_uri=https%3A%2F%2Fbaytonoauths.onrender.com%3A4848&scope=identify+guilds.join", // OAuth2 URL
+    webhookURL: process.env.WEBHOOK, // Log webhook URL
+    webhookURL2: "https://discord.com/api/webhooks/1254814784574980127/L0giXKQO" // İkinci log webhook
+};
