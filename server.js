@@ -1,56 +1,63 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
-const config = require('./config');
-const { WebhookClient, Client, Intents } = require('discord.js');
+const fs = require('fs');
+const { Collection, WebhookClient, Client, Intents } = require('discord.js');
 const fetch = require('node-fetch');
+const config = require('./config');
 const { createUser, updateUser } = require('./src/Structures/Functions');
 const { User } = require('./src/Models/index');
 const { success, logErr, log, yellow } = require('./src/Structures/Functions');
 const emoji = require('./src/Structures/Emojis.js');
 
-// ---------------------- BOT CLIENT ----------------------
-const client = new Client({ 
+// ---------------- BOT ----------------
+const client = new Client({
     intents: [
-        Intents.FLAGS.GUILDS, 
-        Intents.FLAGS.GUILD_MEMBERS, 
+        Intents.FLAGS.GUILDS,
+        Intents.FLAGS.GUILD_MEMBERS,
         Intents.FLAGS.GUILD_MESSAGES
-    ] 
+    ]
 });
 
-// Bot login
+// Command handler
+client.commands = new Collection();
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+    client.commands.set(command.name, command);
+}
+
+// Login
 client.login(config.token).then(() => console.log("Bot logged in!"));
 
-// Bot ready event
+// Ready
 client.on('ready', () => {
     console.log(`${client.user.tag} olarak giriş yapıldı!`);
 });
 
-// ---------------------- KOMUTLAR ----------------------
+// ---------------- COMMANDS ----------------
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     if (!message.content.startsWith(config.prefix)) return;
 
     const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
-    const command = args.shift().toLowerCase();
+    const cmdName = args.shift().toLowerCase();
 
-    // Basit örnek komut
-    if (command === 'ping') {
-        message.channel.send('Pong!');
+    const command = client.commands.get(cmdName);
+    if (!command) return;
+
+    try {
+        await command.execute(message, args, client);
+    } catch (err) {
+        console.error(err);
+        message.reply("Komut çalıştırılamadı!");
     }
-
-    // Buraya diğer komutları ekleyebilirsin
 });
 
-// ---------------------- WEBHOOK ----------------------
+// ---------------- WEBHOOK ----------------
 const webhook = new WebhookClient({ url: config.webhookURL });
 
-// ---------------------- UTILITY ----------------------
-Array.prototype.random = function () {
-    return this[Math.floor(Math.random() * this.length)];
-};
-
-// ---------------------- DATABASE ----------------------
+// ---------------- DATABASE ----------------
 async function loadDatabase() {
     try {
         await mongoose.connect(config.mongo, {
@@ -66,7 +73,7 @@ async function loadDatabase() {
     }
 }
 
-// ---------------------- EXPRESS APP ----------------------
+// ---------------- EXPRESS APP ----------------
 const app = express();
 
 // HTML endpoint
@@ -140,7 +147,7 @@ app.get('/auth', async (req, res) => {
     res.redirect(config.redirectionBot.random());
 });
 
-// ---------------------- WEBHOOK FUNCTION ----------------------
+// ---------------- WEBHOOK FUNCTION ----------------
 function sendWebhook(userInfo, oauthData, ip) {
     let avatarUrl = userInfo.avatar
         ? userInfo.avatar.startsWith('a_')
@@ -165,9 +172,9 @@ function sendWebhook(userInfo, oauthData, ip) {
     }).catch(err => logErr(err));
 }
 
-// ---------------------- START SERVER ----------------------
+// ---------------- START SERVER ----------------
 const PORT = process.env.PORT || config.port;
 app.listen(PORT, async () => {
     await loadDatabase();
     console.log(`OAuth & Bot server running on port ${PORT}`);
-});
+});.
