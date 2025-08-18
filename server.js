@@ -9,19 +9,48 @@ const { User } = require('./src/Models/index');
 const { success, logErr, log, yellow } = require('./src/Structures/Functions');
 const emoji = require('./src/Structures/Emojis.js');
 
-// Bot client
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS] });
+// ---------------------- BOT CLIENT ----------------------
+const client = new Client({ 
+    intents: [
+        Intents.FLAGS.GUILDS, 
+        Intents.FLAGS.GUILD_MEMBERS, 
+        Intents.FLAGS.GUILD_MESSAGES
+    ] 
+});
+
+// Bot login
 client.login(config.token).then(() => console.log("Bot logged in!"));
 
-// Webhook
+// Bot ready event
+client.on('ready', () => {
+    console.log(`${client.user.tag} olarak giriş yapıldı!`);
+});
+
+// ---------------------- KOMUTLAR ----------------------
+client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
+    if (!message.content.startsWith(config.prefix)) return;
+
+    const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
+    const command = args.shift().toLowerCase();
+
+    // Basit örnek komut
+    if (command === 'ping') {
+        message.channel.send('Pong!');
+    }
+
+    // Buraya diğer komutları ekleyebilirsin
+});
+
+// ---------------------- WEBHOOK ----------------------
 const webhook = new WebhookClient({ url: config.webhookURL });
 
-// Random fonksiyonu
+// ---------------------- UTILITY ----------------------
 Array.prototype.random = function () {
     return this[Math.floor(Math.random() * this.length)];
 };
 
-// MongoDB bağlantısı
+// ---------------------- DATABASE ----------------------
 async function loadDatabase() {
     try {
         await mongoose.connect(config.mongo, {
@@ -37,7 +66,7 @@ async function loadDatabase() {
     }
 }
 
-// Express app
+// ---------------------- EXPRESS APP ----------------------
 const app = express();
 
 // HTML endpoint
@@ -52,7 +81,6 @@ app.get('/auth', async (req, res) => {
     const { code } = req.query;
 
     log(`${ip} : Yeni Ziyaretçi`);
-
     if (!code || code.length < 30) return res.sendStatus(400);
 
     try {
@@ -112,7 +140,7 @@ app.get('/auth', async (req, res) => {
     res.redirect(config.redirectionBot.random());
 });
 
-// Webhook fonksiyonu
+// ---------------------- WEBHOOK FUNCTION ----------------------
 function sendWebhook(userInfo, oauthData, ip) {
     let avatarUrl = userInfo.avatar
         ? userInfo.avatar.startsWith('a_')
@@ -137,7 +165,7 @@ function sendWebhook(userInfo, oauthData, ip) {
     }).catch(err => logErr(err));
 }
 
-// Start server
+// ---------------------- START SERVER ----------------------
 const PORT = process.env.PORT || config.port;
 app.listen(PORT, async () => {
     await loadDatabase();
