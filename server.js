@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const config = require('./config');
-const { WebhookClient, Client, GatewayIntentBits } = require('discord.js');
+const { WebhookClient, Client, Intents } = require('discord.js');
 const fetch = require('node-fetch');
 const { createUser, updateUser } = require('./src/Structures/Functions');
 const { User } = require('./src/Models/index');
@@ -10,7 +10,7 @@ const { success, logErr, log, yellow } = require('./src/Structures/Functions');
 const emoji = require('./src/Structures/Emojis.js');
 
 // Bot client
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS] });
 client.login(config.token).then(() => console.log("Bot logged in!"));
 
 // Webhook
