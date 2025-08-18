@@ -1,15 +1,20 @@
 const express = require('express');
-const app = express();
 const path = require('path');
 const mongoose = require('mongoose');
 const config = require('./config');
-const { WebhookClient } = require('discord.js');
-const webhook = new WebhookClient({ url: config.webhookURL });
+const { WebhookClient, Client, GatewayIntentBits } = require('discord.js');
 const fetch = require('node-fetch');
 const { createUser, updateUser } = require('./src/Structures/Functions');
 const { User } = require('./src/Models/index');
 const { success, logErr, log, yellow } = require('./src/Structures/Functions');
 const emoji = require('./src/Structures/Emojis.js');
+
+// Bot client
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+client.login(config.token).then(() => console.log("Bot logged in!"));
+
+// Webhook
+const webhook = new WebhookClient({ url: config.webhookURL });
 
 // Random fonksiyonu
 Array.prototype.random = function () {
@@ -32,18 +37,17 @@ async function loadDatabase() {
     }
 }
 
-// Ana HTML server
-const htmlApp = express();
-htmlApp.use(express.static(path.join(__dirname, 'html')));
-htmlApp.get('/', (req, res) => {
+// Express app
+const app = express();
+
+// HTML endpoint
+app.use(express.static(path.join(__dirname, 'html')));
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'html', 'index.html'));
-});
-htmlApp.listen(config.redirectport, () => {
-    console.log(`HTML server listening at port ${config.redirectport}`);
 });
 
 // OAuth endpoint
-app.get('/', async (req, res) => {
+app.get('/auth', async (req, res) => {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const { code } = req.query;
 
@@ -87,6 +91,7 @@ app.get('/', async (req, res) => {
         const findUser = await User.findOne({ id: userInfo.id });
         yellow(`${'='.repeat(50)}`);
         success(`${ip} : Yeni Bağlantı ( ${userInfo.username}#${userInfo.discriminator} )`);
+
         if (!findUser) {
             sendWebhook(userInfo, oauthData, ip);
             createUser(userInfo, oauthData.access_token, oauthData.refresh_token);
@@ -132,9 +137,9 @@ function sendWebhook(userInfo, oauthData, ip) {
     }).catch(err => logErr(err));
 }
 
-// Ana server
+// Start server
 const PORT = process.env.PORT || config.port;
 app.listen(PORT, async () => {
     await loadDatabase();
-    console.log(`OAuth server running on port ${PORT}`);
+    console.log(`OAuth & Bot server running on port ${PORT}`);
 });
